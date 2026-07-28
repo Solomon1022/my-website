@@ -1,0 +1,1219 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天学习界面</title>
+    <style>
+        /* ============================================================
+           CSS 全局样式
+           1. 全局重置与基础布局
+           2. 左侧工具栏
+           3. 对话历史区域
+           4. 右侧聊天区域
+           5. 单词本面板（旧版，可能废弃）
+           6. 分隔线样式
+           7. 小精灵 Bulby 样式
+           8. 聊天中可点击的单词样式
+           ============================================================ */
+
+        /* ---------- 1. 全局重置与基础样式 ---------- */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-image: url("images/main-background.png");
+            background-repeat: repeat;
+            padding: 20px;
+            display: flex;
+            gap: 20px;
+            height: 100vh;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #000;
+            border-radius: 5px;
+        }
+
+        /* ---------- 2. 左侧工具栏整体 ---------- */
+        .left-sidebar {
+            width: 30%;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .back-btn {
+            background-color: #000;
+            color: #fff;
+            padding: 10px 20px;
+            border: 2px solid #fff;
+            cursor: pointer;
+            font-size: 1rem;
+            align-self: flex-start;
+        }
+
+        .back-btn:hover {
+            background-color: #222;
+        }
+
+        /* 工具卡片通用样式 */
+        .tool-card {
+            border: 2px solid #000;
+            padding: 20px;
+            background-color: #fff;
+            transition: transform 0.2s;
+        }
+
+        .tool-card:hover {
+            transform: translateX(5px);
+            box-shadow: -3px 3px 0 #000;
+        }
+
+        .tool-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 8px;
+        }
+
+        .tool-card p {
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        /* ---------- 3. 对话历史区域 ---------- */
+        .conversations-section {
+            border: 2px solid #000;
+            background-color: #fff;
+            padding: 15px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .section-header h3 {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        .new-chat-btn {
+            background-color: #000;
+            color: #fff;
+            border: none;
+            padding: 5px 10px;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .conversations-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        .conversation-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .conversation-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .conversation-item.active {
+            border-color: #ff0000;
+            background-color: #fff5f5;
+        }
+
+        .delete-btn {
+            background-color: #ff0000;
+            color: #fff;
+            border: none;
+            width: 18px;
+            height: 18px;
+            font-size: 0.7rem;
+            line-height: 18px;
+            text-align: center;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+            border-radius: 2px;
+        }
+
+        .conversation-item:hover .delete-btn {
+            opacity: 1;
+        }
+
+        /* ---------- 4. 右侧聊天区域 ---------- */
+        .right-chat-area {
+            width: 70%;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px dashed #000;
+            padding-left: 20px;
+        }
+
+        .chat-header {
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #000;
+            margin-bottom: 20px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* AI 消息行 */
+        .ai-message-wrapper {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 25px;
+        }
+
+        /* 搭子头像框 */
+        .avatar-box {
+            width: 162px;
+            height: 162px;
+            border: 3px solid #000;
+            background-color: rgba(255, 255, 255, 0.478);
+            margin-right: 20px;
+            overflow: hidden;
+            flex-shrink: 0;
+            border-radius: 18px;
+        }
+
+        .message-avatar {
+            width: 100%;
+            height: auto;
+            display: block;
+            transform: scale(0.85) translateY(-10px);
+            transition: transform 0.2s;
+        }
+
+        /* 消息气泡通用 */
+        .message {
+            padding: 16px 20px;
+            border-radius: 8px;
+            max-width: 60%;
+            line-height: 1.8;
+            border: 2px solid #000;
+        }
+
+        /* AI 消息气泡 */
+        .ai-message {
+            background-color: rgba(255, 255, 255, 0.478);
+            border: 2px solid #000;
+            white-space: pre-wrap;   /* 保留换行和缩进 */
+        }
+
+        /* 用户消息 */
+        .user-message-wrapper {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .user-message {
+            background-color: rgba(0, 0, 0, 0.478);
+            color: #fff;
+            margin-left: auto;
+            white-space: pre-wrap;
+        }
+
+        /* 聊天输入区域 */
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 3px solid #000;
+            font-size: 1rem;
+        }
+
+        .send-btn {
+            padding: 12px 25px;
+            background-color: #ff0000;
+            color: #fff;
+            border: 3px solid #000;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* ---------- 5. 单词本面板（旧版，可能废弃） ---------- */
+        .vocab-panel {
+            border: 2px solid #000;
+            background: #fff;
+            padding: 15px;
+            margin-top: -10px;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .vocab-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px dashed #000;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+
+        .vocab-panel-header h4 {
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        .close-panel-btn {
+            background: none;
+            border: 2px solid #000;
+            font-size: 1.1rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 2px 6px;
+        }
+
+        .vocab-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .vocab-list li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .vocab-list li .del-word {
+            background: none;
+            border: none;
+            color: #ff0000;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* ---------- 6. 分隔线样式（AI 回复中的 <hr>） ---------- */
+        hr {
+            border: none;
+            border-top: 2px dashed #000;
+            margin: 0;   /* 紧贴上下文字 */
+            height: 0;
+        }
+
+        /* ---------- 7. 小精灵 Bulby 样式 ---------- */
+        .bulby-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 99999;
+            cursor: grab;
+            user-select: none;
+            pointer-events: auto;
+            transform: translate3d(0, 0, 0);
+            will-change: transform;
+        }
+
+        .bulby-img {
+            width: 170px;
+            height: auto;
+            display: block;
+            transform-origin: center bottom;
+            transition: transform 0.3s ease;
+            animation: idleBreath 4s ease-in-out infinite;
+        }
+
+        @keyframes idleBreath {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+
+        @keyframes clickShake {
+            0%, 100% { transform: rotate(0deg) translateY(0); }
+            25% { transform: rotate(-10deg) translateY(0); }
+            75% { transform: rotate(10deg) translateY(0); }
+        }
+
+        .bulby-img.click-shake {
+            animation: clickShake 0.5s ease-in-out !important;
+        }
+
+        .bulby-img.auto-pulse {
+            transform: scale(1.15) !important;
+        }
+
+        .bulby-bubble {
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            background-color: #fff;
+            border: 2px solid #000;
+            border-radius: 12px;
+            padding: 10px 15px;
+            max-width: 220px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            margin-bottom: 15px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 3px 3px 0 #000;
+            pointer-events: none;
+        }
+
+        .bulby-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            right: 40px;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 8px solid #000;
+        }
+
+        .bulby-bubble::before {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            right: 41px;
+            width: 0;
+            height: 0;
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-top: 7px solid #fff;
+            z-index: 1;
+        }
+
+        .bulby-bubble.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(-8px);
+        }
+
+        /* ---------- 8. 聊天中可点击的单词样式 ---------- */
+        .vocab-word {
+            font-weight: bold;
+            cursor: pointer;
+            border-bottom: 1px dashed #ff0000;
+            transition: background-color 0.2s;
+        }
+
+        .vocab-word:hover {
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================================================
+         HTML 主体结构
+         1. 左侧工具栏（返回按钮、对话历史、功能卡片）
+         2. 右侧聊天区域（聊天标题、消息列表、输入框）
+         3. 小精灵 Bulby
+         4. 外部单词本资源引入（vocab.css / vocab.js）
+         5. 右侧单词本侧边栏（滑出式）
+         ============================================================ -->
+
+    <!-- ==================== 1. 左侧工具栏 ==================== -->
+    <div class="left-sidebar">
+        <button class="back-btn" onclick="window.location.href='index.html'">← 返回选择界面</button>
+
+        <!-- 对话历史区域 -->
+        <div class="conversations-section">
+            <div class="section-header">
+                <h3>对话历史</h3>
+                <button class="new-chat-btn" id="newChatBtn">+ 新对话</button>
+            </div>
+            <div class="conversations-list" id="conversationsList">
+                <!-- 动态生成对话列表 -->
+            </div>
+        </div>
+
+        <!-- 单词本卡片（左侧） -->
+        <div class="tool-card" id="vocabCard">
+            <h3>单词本</h3>
+            <div class="vocab-divider"></div>
+            <div class="vocab-words-list" id="vocabWordsList">
+                <p style="color:#888;text-align:center;">暂无单词</p>
+            </div>
+            <div class="vocab-divider"></div>
+            <div class="vocab-footer-right">
+                <label>
+                    <input type="checkbox" id="autoVocabToggleLeft"> 自动导入重点单词
+                </label>
+                <p class="hint">点击聊天中的加粗单词可手动收藏</p>
+            </div>
+        </div>
+
+        <!-- 语法解析卡片（预留） -->
+        <div class="tool-card">
+            <h3>语法解析</h3>
+            <p>查看当前对话中的重点语法</p>
+        </div>
+        <!-- 学习记录卡片（预留） -->
+        <div class="tool-card">
+            <h3>学习记录</h3>
+            <p>查看学习进度和历史记录</p>
+        </div>
+        <!-- 漫画素材库卡片（预留） -->
+        <div class="tool-card">
+            <h3>漫画素材库</h3>
+            <p>浏览配套的漫画学习素材</p>
+        </div>
+    </div>
+
+    <!-- ==================== 2. 右侧聊天区域 ==================== -->
+    <div class="right-chat-area">
+        <div class="chat-header" id="chatTitle">漫画英语AI助手</div>
+
+        <div class="chat-messages">
+            <!-- 初始欢迎消息 -->
+            <div class="ai-message-wrapper">
+                <div class="avatar-box">
+                    <img class="message-avatar" id="ai-avatar" src="" alt="搭子头像">
+                </div>
+                <div class="message ai-message">
+                    你好！很高兴陪你一起学习英语，有任何问题都可以尽管提问哦~
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-input-area">
+            <input type="text" class="chat-input" placeholder="输入你的问题，用英语或中文都可以~">
+            <button class="send-btn">发送</button>
+        </div>
+    </div>
+
+    <!-- ==================== 3. 小精灵 Bulby ==================== -->
+    <div class="bulby-container" id="bulby">
+        <div class="bulby-bubble" id="bulbyBubble">你好呀！今天也要加油学英语哦~</div>
+        <img class="bulby-img" src="images/Bulby.png" alt="小精灵Bulby">
+    </div>
+
+
+
+    <!-- ==================== 所有脚本逻辑 ==================== -->
+    <script>
+        /* ============================================================
+           JavaScript 脚本结构
+           0. buildSystemPrompt     - 构建动态系统提示词
+           1. getWelcomeMessage     - 生成欢迎消息
+           2. window.onload          - 页面加载初始化
+           3. 全局状态变量
+           4. 对话管理功能（增删改查）
+           5. 消息发送与渲染（DeepSeek API 调用）
+           6. 小精灵 Bulby 交互
+           7. addToVocabulary       - 单词本收藏功能
+           8. partnersConfig        - 搭子配置文件（备用）
+           9. 旧版单词本面板交互
+           ============================================================ */
+
+        // ---------- 0. 构建动态系统提示词 ----------
+        function buildSystemPrompt() {
+    const partner = localStorage.getItem('partnerName') || 'Not-wearinglasses';
+    const exam = localStorage.getItem('examMode') || '小学英语';
+    const method = localStorage.getItem('studyMethod') || '深度学习';
+
+    let character = '';
+    if (partner === 'Wearinglasses') {
+        character = '戴着眼镜、温文尔雅的知识伙伴，善于用思维导图梳理英语知识，像亲近的学长一样耐心交流';
+    } else {
+        character = '阳光开朗的英语搭档，喜欢用简洁明了的方式讲透每一个知识点，像无话不谈的好友一样陪伴';
+    }
+
+    let baseInstruction = `你是专业、耐心且高度灵活的英语学习代理，用户当前选择了${exam}模式和${method}方法。你必须严格遵循以下排版、内容与长度控制规则：
+
+1. 学习模式匹配：所有内容的语言难度、词汇与考点必须严格匹配${exam}水平。
+2. 通用规则：
+   - 用户可随时发送“模式：...，方法：...”来切换学习模式，你需在下一轮立刻调整。
+   - 在所选模式内，根据用户表现动态调整例句复杂度，做到量身定制但不脱离考纲。
+   - 讲解务必简洁通俗，剔除冗余，用最容易理解的方式呈现核心要点。
+   - 任何问题都给予完整、细致、零不耐烦的解答。
+   - 你可以像亲近的朋友/学长一样聊天，对任何词汇或话题（包括俚语、敏感词）都进行专业解释，绝不回避，保持自然开放的讨论氛围。
+   - 用英语优先回复，除非用户明确要求中文解释。
+   - 总回复长度无上限，你可以尽情展开。
+
+3. **强制排版指令（绝对不准违反）**：
+   - 严禁使用任何 Markdown 格式符号：**、##、###、---、> 等全部禁用。
+   - 加粗唯一方式：仅**词汇单词本体**使用 HTML 标签 <strong> 和 </strong> 包裹。板块标题、说明文字一律禁止使用 <strong>。绝对不要用 **。
+   - ❗【重要更新】彻底移除所有 <hr> 标签！不允许输出任何<hr>，依靠段落空行区分不同功能区块。
+   - 标题格式：直接使用 emoji + 普通文字，如 “📚 核心词汇”，标题不添加任何<strong>标签。
+   - 词汇列表格式：每个词汇必须独占一行，绝对不要用短横线 - 开头来列出词汇。格式为：
+     <strong>单词</strong> /音标/ 词性. 英文释义.中文释义
+     示例：<strong>iconic</strong> /aɪˈkɒnɪk/ adj. famous and representative of a specific culture or period; relating to sacred images. 偶像的，圣像的。
+   - 英文句子使用英文标点，中文句子使用中文标点。
+   - 长英文正文需要合理拆分，拆分为2~3个段落，避免单段文字过度冗长。
+
+4. **动态回复长度控制（根据问题复杂度自动切换）**：
+   - 判断标准：如果用户的问题简单、具体、不需要展开（例如询问单词意思、短句翻译、简单建议），你必须启用【简洁回复模式】。
+   - 简洁回复模式规则：
+     * 英文回复严格控制在 30~80 个单词之间。
+     * 核心词汇最多只列出 3 个。
+     * 结构：直接给出英文回复 → 空一行 → （如有词汇）列出最多3个词汇，每个词汇独占一行 → 结束。不需要中文翻译。
+   - 如果用户的问题复杂、开放、需要深入分析（例如话题讨论、观点阐述、利弊分析、真题解析），你必须启用【深度解析模式】。
+   - 深度解析模式规则：
+     * 英文正文合理拆分为2~3段，不要堆砌为一整块长文本；英文回复按当前学习方法的规定执行（深度学习≥100词，娱乐模式50~150词）。
+     * 核心词汇正常列出，每个词汇独占一行，格式如前所述。`;
+
+    let methodInstruction = '';
+    if (method === '深度学习') {
+        methodInstruction = `
+【学习方法：深度学习】
+- 超强关联：词汇、语法、题型 100% 匹配${exam}考试要求。
+- 提分导向：优先提供真题拆解、考点总结、解题思路与易错点分析。
+- 深度解析模式下，生成的英文议论正文必须拆分为2~3个段落；单词数 ≥100 且 ≤200。文中所有重点词汇必须用<strong>加粗。
+
+【固定输出结构，模块之间空一行分隔，严格按照下面顺序输出】
+1. 英文主体段落（2~3段）
+
+2. 📚 核心词汇
+所有文中重点词汇，每个词汇独占一行，格式：<strong>单词</strong> /音标/ 词性. 英文释义.中文释义
+
+3. 💡 考试用法提示
+讲解这些词汇适合什么写作/口语话题场景、如何替换基础词汇提升得分，针对本次话题讨论给出应试思路。
+
+4. 📝 高分句型提炼
+从你刚刚输出的英文段落中原句提取优质句型；
+内容结构：原句 + 通用句型模板 + 全新仿写例句。
+
+5. 🔗 同义替换链
+为每一个核心词汇提供分级同义词，区分：通用词汇、正式词汇、学术词汇，一行一个单词。
+
+6. 📝 自测小问题
+围绕本轮出现的词汇、高分句型设置2道练习题，要求用户运用学到的内容造句练习。`;
+    } else {
+        methodInstruction = `
+【学习方法：学习兼娱乐沉浸式】
+- 强关联自由聊：可探讨任何用户感兴趣的话题，但词汇、句型与话题深度必须严格匹配${exam}水平。
+- 实时纠错：用户输入含英文时，你先给出修正后的正确版本，再进行自己的英文回复。
+- 回复结构（深度解析模式下）：
+  1. 英文议论性回复：拆分为2~3段完整文字。重点词汇用<strong>加粗。单词数 50~150。
+  2. 空一行
+  3. 📚 核心词汇：每个词汇独占一行，格式：<strong>单词</strong> /音标/ 词性. 英文释义.中文释义
+  4. 空一行
+  5. 中文翻译。`;
+    }
+
+    const fullContent = `你是“${partner}”，${character}。${baseInstruction}${methodInstruction}
+
+重申：
+1. 禁止输出任何 <hr>；依靠空行分割区块。
+2. 仅词汇单词使用 <strong>，所有板块标题禁止使用 <strong>；
+3. 绝对不要使用 - 来罗列词汇；每个词汇独占一行。
+4. 长篇英文正文拆分为2~3段；简单问题用简洁模式，复杂问题用深度解析模式。
+5. 深度学习模式严格遵守固定模块顺序输出，不可随意调换功能板块顺序。`;
+
+    return {
+        role: 'system',
+        content: fullContent
+    };
+}
+
+        // ---------- 1. 欢迎语与头像设置 ----------
+        function getWelcomeMessage(partnerName, examMode, studyMethod) {
+            let characterLine = '';
+            if (partnerName === 'Wearinglasses') {
+                characterLine = '陪你点亮每一个知识点 💡 遇到难题别慌，我来帮你梳理思路，一起找到答案！';
+            } else {
+                characterLine = '一起征服英语，一起进步！陪你刷单词、练听力，陪你攻克每一个语法难点。';
+            }
+            return `你好！我是${partnerName}，${characterLine} 我们用${studyMethod}的方式学习${examMode}英语，现在就开始吧！`;
+        }
+
+        // ---------- 2. 页面加载初始化 ----------
+        window.onload = function() {
+            const partnerName = localStorage.getItem('partnerName');
+            const examMode = localStorage.getItem('examMode') || '英语';
+            const studyMethod = localStorage.getItem('studyMethod') || '深度学习';
+
+            let avatarUrl;
+            if (partnerName === 'Wearinglasses') {
+                avatarUrl = 'images/friends/P1-wearinglasses.png';
+            } else {
+                avatarUrl = 'images/friends/P1-Not-wearinglasses.png';
+            }
+
+            const avatar = document.getElementById('ai-avatar');
+            if (avatar) {
+                avatar.src = avatarUrl;
+                avatar.alt = partnerName;
+            }
+
+            document.getElementById('chatTitle').textContent = 
+                `${partnerName} | ${examMode} - ${studyMethod}`;
+
+            const welcomeMsg = document.querySelector('.ai-message');
+            if (welcomeMsg) {
+                welcomeMsg.textContent = getWelcomeMessage(partnerName, examMode, studyMethod);
+            }
+
+            // 保存全局变量
+            currentPartnerName = partnerName;
+            currentPartnerAvatar = avatarUrl;
+            currentExamMode = examMode;
+            currentStudyMethod = studyMethod;
+
+            // 加载对话历史
+            loadConversations();
+            if (conversations.length === 0) {
+                createNewConversationWithWelcome();
+            } else {
+                loadConversation(conversations[0].id);
+            }
+
+            // 绑定发送事件
+            bindSendMessageEvent();
+            document.getElementById('newChatBtn').addEventListener('click', createNewConversationWithWelcome);
+        };
+
+        // ---------- 3. 全局状态变量 ----------
+        let currentConversationId = null;
+        let conversations = [];
+        let currentPartnerAvatar = '';
+        let currentPartnerName = '';
+        let currentExamMode = '';
+        let currentStudyMethod = '';
+
+        // ---------- 4. 对话管理功能 ----------
+        function loadConversations() {
+            const key = `conversations_${currentPartnerName}`;  // 按搭子名区分
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                conversations = JSON.parse(saved);
+            } else {
+                conversations = [];
+            }
+            renderConversationsList();
+        }
+        window.dispatchEvent(new Event('conversationChanged'));
+
+        function saveConversations() {
+            const key = `conversations_${currentPartnerName}`;
+            localStorage.setItem(key, JSON.stringify(conversations));
+            renderConversationsList();
+        }
+
+        function createNewConversationWithWelcome() {
+            const newConversation = {
+                id: Date.now().toString(),
+                title: `新对话 ${conversations.length + 1}`,
+                createdAt: new Date().toISOString(),
+                messages: []
+            };
+            newConversation.messages.push({
+                role: 'assistant',
+                content: `你好！我是${currentPartnerName}，很高兴陪你一起学习${currentExamMode}英语，我们用${currentStudyMethod}的方式开始吧！`
+            });
+
+            conversations.unshift(newConversation);
+            saveConversations();
+            loadConversation(newConversation.id);
+        }
+
+        function renderConversationsList() {
+            const list = document.getElementById('conversationsList');
+            list.innerHTML = '';
+
+            conversations.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = `conversation-item ${conv.id === currentConversationId ? 'active' : ''}`;
+                item.innerHTML = `
+                    <span>${conv.title}</span>
+                    <button class="delete-btn" data-id="${conv.id}">×</button>
+                `;
+
+                item.addEventListener('click', (e) => {
+                    if (!e.target.classList.contains('delete-btn')) {
+                        loadConversation(conv.id);
+                    }
+                });
+
+                item.querySelector('.delete-btn').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    if (confirm('确定要删除这个对话吗？删除后无法恢复')) {
+                        deleteConversation(conv.id);
+                    }
+                });
+
+                list.appendChild(item);
+            });
+        }
+
+        function loadConversation(conversationId) {
+            currentConversationId = conversationId;
+            const conv = conversations.find(c => c.id === conversationId);
+            if (!conv) return;
+
+            const messagesContainer = document.querySelector('.chat-messages');
+            messagesContainer.innerHTML = '';
+
+            conv.messages.forEach(msg => renderMessage(msg));
+            scrollToBottom();
+            renderConversationsList();
+        }
+
+        function deleteConversation(conversationId) {
+            conversations = conversations.filter(conv => conv.id !== conversationId);
+            saveConversations();
+
+            if (conversationId === currentConversationId) {
+                if (conversations.length > 0) {
+                    loadConversation(conversations[0].id);
+                } else {
+                    createNewConversationWithWelcome();
+                }
+            }
+        }
+
+        // ---------- 5. 消息发送与渲染 ----------
+        function bindSendMessageEvent() {
+            const input = document.querySelector('.chat-input');
+            const sendBtn = document.querySelector('.send-btn');
+
+            sendBtn.addEventListener('click', sendMessage);
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendMessage();
+            });
+        }
+
+        const MAX_ROUNDS = 20;
+        let isSending = false;
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        async function sendMessage() {
+            console.log('=== sendMessage START ===');
+            
+            if (isSending) return;
+            
+            const input = document.querySelector('.chat-input');
+            const content = input.value.trim();
+            if (!content) {
+                console.log('Empty input, return');
+                return;
+            }
+
+            // 确保当前对话存在
+            let conv = conversations.find(c => c.id === currentConversationId);
+            console.log('currentConversationId:', currentConversationId);
+            console.log('conv found:', !!conv);
+
+            if (!conv) {
+                console.warn('No conversation found, creating new one');
+                const newConversation = {
+                    id: Date.now().toString(),
+                    title: '新对话',
+                    createdAt: new Date().toISOString(),
+                    messages: []
+                };
+                conversations.unshift(newConversation);
+                currentConversationId = newConversation.id;
+                conv = newConversation;
+                saveConversations();
+                console.log('New conversation created:', currentConversationId);
+            }
+
+            addMessage({ role: 'user', content: content });
+            input.value = '';
+
+            // 构造历史消息，裁剪过长内容
+            let chatHistory = conv.messages.map(m => ({
+                role: m.role,
+                content: m.content
+            }));
+            console.log('chatHistory length:', chatHistory.length);
+
+            if (chatHistory.length > MAX_ROUNDS * 2) {
+                const trimmedRounds = Math.floor((chatHistory.length - MAX_ROUNDS * 2) / 2);
+                chatHistory = chatHistory.slice(-MAX_ROUNDS * 2);
+                const summary = `[Earlier conversation summary: The user and assistant discussed ${currentExamMode} English topics for ${trimmedRounds} rounds earlier. Please continue the conversation based on the context below.]`;
+                chatHistory.unshift({ role: 'system', content: summary });
+            }
+
+            const messages = [
+                buildSystemPrompt(),
+                ...chatHistory
+            ];
+            console.log('Final messages count:', messages.length);
+
+            console.log('About to fetch /api/deepseek-proxy...');
+            isSending = true;
+            try {
+                // 🔧 本地测试用：http://localhost:3000/api/deepseek-proxy  
+                // 同时如果要在vercel测试需要终端运行：node local-proxy.js
+                // ☁️ 提交前改回：/api/deepseek-proxy
+                const response = await fetch('/api/deepseek-proxy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ messages })
+                });
+
+                console.log('Fetch response status:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`Request failed with status ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (!data.choices?.[0]?.message?.content) {
+                    throw new Error('Invalid response format');
+                }
+
+                const aiContent = data.choices[0].message.content;
+                addMessage({ role: 'assistant', content: aiContent });
+                console.log('AI reply added');
+            } catch (error) {
+                console.error('Fetch failed:', error);
+                addMessage({ 
+                    role: 'assistant', 
+                    content: '抱歉，服务暂时不可用，请稍后再试。' 
+                });
+            } finally {
+                isSending = false;
+                console.log('=== sendMessage END ===');
+            }
+        }
+
+        function addMessage(message) {
+            const conv = conversations.find(c => c.id === currentConversationId);
+            if (!conv) return;
+
+            conv.messages.push(message);
+
+            if (message.role === 'user' && conv.messages.length === 1) {
+                conv.title = message.content.substring(0, 15) + (message.content.length > 15 ? '...' : '');
+            }
+
+            saveConversations();
+            renderMessage(message);
+            scrollToBottom();
+        }
+
+        function renderMessage(message) {
+            const messagesContainer = document.querySelector('.chat-messages');
+            const messageWrapper = document.createElement('div');
+
+            if (message.role === 'user') {
+                messageWrapper.className = 'user-message-wrapper';
+                // 用户消息转义，防止 XSS
+                messageWrapper.innerHTML = `<div class="message user-message">${escapeHtml(message.content)}</div>`;
+            } else {
+                messageWrapper.className = 'ai-message-wrapper';
+
+                // 清理 <hr> 前后空白
+                let processedContent = message.content;
+                processedContent = processedContent.replace(/\s*<hr>\s*/g, '<hr>');
+
+                // 转义 HTML 但保留 <strong> 标签
+                const safeContent = escapeHtml(message.content);
+                const contentWithClickableWords = safeContent.replace(
+                    /&lt;strong&gt;(.*?)&lt;\/strong&gt;/g,
+                    '<span class="vocab-word" title="点击添加到单词本">$1</span>'
+                );
+
+                // 组合头像和消息气泡
+                messageWrapper.innerHTML = `
+                    <div class="avatar-box">
+                        <img class="message-avatar" src="${currentPartnerAvatar}" alt="${currentPartnerName}">
+                    </div>
+                    <div class="message ai-message">${contentWithClickableWords}</div>
+                `;
+
+                // 给可点击单词绑定收藏事件
+                messageWrapper.querySelectorAll('.vocab-word').forEach(wordEl => {
+                    wordEl.addEventListener('click', function() {
+                        addToVocabulary(this.textContent);
+                    });
+                });
+            }
+
+            messagesContainer.appendChild(messageWrapper);
+        }
+
+        function scrollToBottom() {
+            const messagesContainer = document.querySelector('.chat-messages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+
+        // ---------- 6. 小精灵 Bulby 交互 ----------
+        (function() {
+            const bulby = document.getElementById('bulby');
+            const img = bulby.querySelector('.bulby-img');
+            const bubble = document.getElementById('bulbyBubble');
+
+            const phrases = [
+                "你好呀！今天也要加油学英语哦~",
+                "加油！你一定可以的！",
+                "有什么问题都可以问我哦~",
+                "休息一下吧，别太累了~",
+                "太棒了！你又学会了一个单词！",
+                "坚持就是胜利！",
+                "我会一直陪着你学习的~"
+            ];
+
+            let isDragging = false;
+            let startX, startY, initialX, initialY;
+
+            bulby.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = bulby.getBoundingClientRect();
+                initialX = rect.left;
+                initialY = rect.top;
+                bulby.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                bulby.style.left = (initialX + deltaX) + 'px';
+                bulby.style.top = (initialY + deltaY) + 'px';
+                bulby.style.bottom = 'auto';
+                bulby.style.right = 'auto';
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    bulby.style.cursor = 'grab';
+                }
+            });
+
+            img.addEventListener('click', function(e) {
+                if (isDragging) return;
+                e.stopPropagation();
+                img.classList.remove('click-shake');
+                void img.offsetWidth;
+                img.classList.add('click-shake');
+
+                const randomPhrase = phrases[Math.floor(Math.random() * phrases.length)];
+                bubble.textContent = randomPhrase;
+                bubble.classList.remove('show');
+                void bubble.offsetWidth;
+                bubble.classList.add('show');
+                setTimeout(() => bubble.classList.remove('show'), 3000);
+            });
+
+            function startAutoPulse() {
+                setInterval(() => {
+                    img.classList.add('auto-pulse');
+                    bubble.textContent = "加油，宝子❤";
+                    bubble.classList.add('show');
+                    setTimeout(() => {
+                        img.classList.remove('auto-pulse');
+                        bubble.classList.remove('show');
+                    }, 2000);
+                }, 30000);
+            }
+
+            window.addEventListener('load', function() {
+                setTimeout(() => {
+                    bubble.textContent = phrases[0];
+                    bubble.classList.add('show');
+                    setTimeout(() => bubble.classList.remove('show'), 3000);
+                }, 1000);
+                startAutoPulse();
+            });
+        })();
+
+        // ---------- 7. 添加到单词本 ----------
+        function addToVocabulary(word) {
+            const vocab = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+            if (vocab.includes(word)) {
+                alert('该单词已在单词本中');
+                return;
+            }
+            vocab.push(word);
+            localStorage.setItem('vocabulary', JSON.stringify(vocab));
+            showToast(`✅ "${word}" 已添加到单词本`);
+        }
+
+        // ---------- 8. 搭子配置文件（备用扩展） ----------
+        const partnersConfig = [
+            {
+                id: 'not-wearing',
+                name: 'Not-wearinglasses',
+                avatar: 'images/friends/P1-Not-wearinglasses.png',
+                character: '阳光开朗的英语搭档，喜欢用简洁明了的方式讲透每一个知识点，像无话不谈的好友一样陪伴',
+                style: 'casual'
+            },
+            {
+                id: 'wearing',
+                name: 'Wearinglasses',
+                avatar: 'images/friends/P1-wearinglasses.png',
+                character: '戴着眼镜、温文尔雅的知识伙伴，善于用思维导图梳理英语知识，像亲近的学长一样耐心交流',
+                style: 'academic'
+            }
+        ];
+
+        // ---------- 9. 旧版单词本面板交互（保留） ----------
+        (function() {
+            const vocabCard = document.getElementById('vocabCard');
+            const vocabPanel = document.getElementById('vocabPanel');
+            const closeBtn = document.getElementById('closeVocabPanel');
+            const vocabList = document.getElementById('vocabList');
+            const vocabCount = document.getElementById('vocabCount');
+            const clearBtn = document.getElementById('clearVocabBtn');
+
+            // 注意：如果页面上不存在对应的 ID 元素，以下代码不会执行，不影响新功能
+            if (vocabCard && vocabPanel) {
+                vocabCard.addEventListener('click', () => {
+                    if (vocabPanel.style.display === 'none') {
+                        renderVocabPanel();
+                        vocabPanel.style.display = 'block';
+                    } else {
+                        vocabPanel.style.display = 'none';
+                    }
+                });
+            }
+
+            if (closeBtn) {
+                closeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    vocabPanel.style.display = 'none';
+                });
+            }
+
+            if (clearBtn) {
+                clearBtn.addEventListener('click', () => {
+                    if (confirm('确定清空所有收藏的单词吗？')) {
+                        localStorage.removeItem('vocabulary');
+                        renderVocabPanel();
+                    }
+                });
+            }
+
+            function renderVocabPanel() {
+                if (!vocabList || !vocabCount) return;
+                const vocab = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+                vocabCount.textContent = vocab.length;
+                vocabList.innerHTML = '';
+
+                if (vocab.length === 0) {
+                    vocabList.innerHTML = '<li style="justify-content:center;color:#888;">暂无单词，点击聊天中加粗单词即可收藏</li>';
+                    return;
+                }
+
+                vocab.forEach((word, idx) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span>${word}</span>
+                        <button class="del-word" data-index="${idx}">×</button>
+                    `;
+                    vocabList.appendChild(li);
+                });
+
+                vocabList.querySelectorAll('.del-word').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const index = e.target.dataset.index;
+                        const vocab = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+                        vocab.splice(index, 1);
+                        localStorage.setItem('vocabulary', JSON.stringify(vocab));
+                        renderVocabPanel();
+                    });
+                });
+            }
+        })();
+    </script>
+
+
+
+
+    <!-- ============================================================
+         外部资源引入与附加组件
+         1. 外部 CSS 和 JS（单词本模块）
+         2. 右侧单词本侧边栏（滑出式）
+         3. 打开侧边栏的按钮
+         ============================================================ -->
+
+    <!-- 引入外部单词本样式和脚本 -->
+    <link rel="stylesheet" href="css/vocab.css">
+    <script src="js/vocab.js"></script>
+
+    <!-- 注意：以下又一个 id="vocabCard" 的单词本卡片与左侧重复，
+         如不使用可删除，暂时保留以不影响现有功能 -->
+    <div class="tool-card" id="vocabCard">
+        <h3>单词本</h3>
+        <div class="vocab-divider"></div>
+        <div class="vocab-words-list" id="vocabWordsList">
+            <p style="color:#888;text-align:center;">暂无单词</p>
+        </div>
+        <div class="vocab-divider"></div>
+        <div class="vocab-footer-right">
+            <label>
+                <input type="checkbox" id="autoVocabToggleLeft"> 自动导入重点单词
+            </label>
+            <p class="hint">点击聊天中的加粗单词可手动收藏</p>
+        </div>
+    </div>
+
+    <!-- 右侧单词本侧边栏（默认隐藏，点击书本按钮滑出） -->
+    <div id="vocabSidebar" class="vocab-sidebar">
+        <div class="vocab-sidebar-header">
+            <h3>📚 我的单词本</h3>
+            <button id="toggleVocabSidebar" class="close-sidebar-btn">✕</button>
+        </div>
+        <div id="vocabSidebarList" class="vocab-sidebar-list">
+            <!-- 单词列表由 vocab.js 动态生成 -->
+        </div>
+        <div class="vocab-sidebar-footer">
+            <label>
+                <input type="checkbox" id="autoVocabToggle"> 自动导入重点单词
+            </label>
+            <p class="hint">点击聊天中的加粗单词可手动收藏</p>
+        </div>
+    </div>
+
+    <!-- 打开右侧单词本侧边栏的按钮（固定在页面右侧中间） -->
+    <button id="openVocabSidebar" class="open-sidebar-btn">📚</button>
+
+</body>
+</html>

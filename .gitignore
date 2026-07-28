@@ -1,0 +1,11 @@
+# 本地代理文件（含 Key）
+local-proxy.js
+
+# VSCode 配置
+.vscode/
+
+# 任何 .env 文件
+*.env
+
+# api/deepseek-proxy.js 已经上传过，不想再跟踪变更可以加：
+# api/deepseek-proxy.js   （建议暂时不加，保留上传但确保不含 Key）
