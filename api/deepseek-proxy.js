@@ -1,13 +1,21 @@
-module.exports = async function handler(req, res) {
-  console.log('Function called, method:', req.method);
+// api/deepseek-proxy.js
+export default async function handler(req, res) {
+  // 允许跨域（同域名部署其实不需要，留着备用）
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
 
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+    res.status(404).json({ error: 'Not found' });
+    return;
   }
 
   try {
     const { messages } = req.body;
-    console.log('Messages received:', messages?.length);
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -19,21 +27,41 @@ module.exports = async function handler(req, res) {
         model: 'deepseek-chat',
         messages: messages,
         temperature: 0.7,
-        max_tokens: 8000
+        max_tokens: 2000,
+        stream: true,
       })
     });
 
-    const data = await response.json();
-    console.log('DeepSeek status:', response.status);
-
     if (!response.ok) {
-      console.error('DeepSeek error:', JSON.stringify(data));
-      return res.status(500).json({ error: data });
+      const error = await response.json();
+      return res.status(500).json({ error });
     }
 
-    res.status(200).json(data);
+    // 设置流式响应头
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    // 流式透传
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      res.write(chunk);
+    }
+
+    res.end();
   } catch (error) {
-    console.error('Handler error:', error);
+    console.error(error);
     res.status(500).json({ error: error.message });
   }
+}
+
+export const config = {
+  api: {
+    bodyParser: true,
+  },
 };
