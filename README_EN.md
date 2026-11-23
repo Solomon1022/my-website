@@ -36,8 +36,8 @@ A pure black-and-white manga-style English learning website. Users choose a cust
 
 ## Local Development
 ```bash
-git clone https://github.com/Solomon1022/bulby-english.git
-cd bulby-english
+git clone https://github.com/Solomon1022/my-website.git
+cd my-website
 node local-proxy.js    # Start the local AI proxy (fill in your API Key)
 
 Then open learn.html with Live Server or simply open it directly in your browser.
